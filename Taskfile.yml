@@ -1,0 +1,116 @@
+version: "3"
+
+dotenv:
+  - ".env"
+
+tasks:
+  check-env:
+    desc: Validate required environment variables
+    cmds:
+      - cmd: "node -e \"const t=process.env.AUTH_TOKEN; if (!t || t === 'change-this-token') { console.error('AUTH_TOKEN is required. Edit .env and set a long random token before running the app.'); process.exit(1); }\""
+
+  install:
+    desc: Install frontend dependencies
+    dir: frontend
+    cmds:
+      - npm install
+
+  dev:
+    desc: Run backend and frontend in development mode
+    deps:
+      - check-env
+    cmds:
+      - npx --yes concurrently -k -n backend,frontend -c blue,magenta "task dev:backend" "task dev:frontend"
+
+  dev:backend:
+    desc: Run Go backend in development mode
+    dir: backend
+    env:
+      PORT: "{{.BACKEND_PORT}}"
+      DATA_DIR: "{{.BACKEND_DATA_DIR}}"
+      AUTH_TOKEN: "{{.AUTH_TOKEN}}"
+    cmds:
+      - go run ./cmd/server
+
+  dev:frontend:
+    desc: Run Next.js frontend in development mode
+    dir: frontend
+    env:
+      NEXT_PUBLIC_API_BASE: "{{.NEXT_PUBLIC_API_BASE}}"
+    cmds:
+      - npm run dev -- -p {{.FRONTEND_PORT}}
+
+  build:
+    desc: Build backend and frontend for production
+    deps:
+      - check-env
+    cmds:
+      - task: build:backend
+      - task: build:frontend
+
+  build:backend:
+    desc: Build Go backend binary
+    dir: backend
+    cmds:
+      - cmd: "node -e \"require('fs').mkdirSync('../dist', { recursive: true })\""
+      - cmd: go build -o ../dist/loadtester-server.exe ./cmd/server
+        platforms: [windows]
+      - cmd: go build -o ../dist/loadtester-server ./cmd/server
+        platforms: [linux, darwin]
+
+  build:frontend:
+    desc: Build Next.js frontend
+    dir: frontend
+    env:
+      NEXT_PUBLIC_API_BASE: "{{.NEXT_PUBLIC_API_BASE}}"
+    cmds:
+      - npm run build
+
+  prod:
+    desc: Build and run backend and frontend in production mode
+    deps:
+      - check-env
+    cmds:
+      - task: build
+      - npx --yes concurrently -k -n backend,frontend -c blue,magenta "task prod:backend" "task prod:frontend"
+
+  prod:backend:
+    desc: Run built backend binary
+    env:
+      PORT: "{{.BACKEND_PORT}}"
+      DATA_DIR: "{{.BACKEND_DATA_DIR}}"
+      AUTH_TOKEN: "{{.AUTH_TOKEN}}"
+    cmds:
+      - cmd: .\dist\loadtester-server.exe
+        platforms: [windows]
+      - cmd: ./dist/loadtester-server
+        platforms: [linux, darwin]
+
+  prod:frontend:
+    desc: Run built Next.js frontend
+    dir: frontend
+    env:
+      NEXT_PUBLIC_API_BASE: "{{.NEXT_PUBLIC_API_BASE}}"
+    cmds:
+      - npm run start -- -p {{.FRONTEND_PORT}}
+
+  test:
+    desc: Run backend tests and frontend lint/build checks
+    cmds:
+      - task: test:backend
+      - task: test:frontend
+
+  test:backend:
+    desc: Run Go tests
+    dir: backend
+    cmds:
+      - go test ./...
+
+  test:frontend:
+    desc: Run frontend lint and production build
+    dir: frontend
+    env:
+      NEXT_PUBLIC_API_BASE: "{{.NEXT_PUBLIC_API_BASE}}"
+    cmds:
+      - npm run lint
+      - npm run build
