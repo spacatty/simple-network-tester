@@ -7,7 +7,9 @@ import {
   importProxyList,
   listProxies,
   listReports,
+  resolveDefaultApiBase,
   recheckProxies,
+  saveApiBase,
   setProxiesEnabled,
   startRun,
   streamRun,
@@ -45,6 +47,13 @@ type MultipartRow = {
   fileName: string;
 };
 
+function createClientId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `id_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
 const defaultConfig: RequestConfig = {
   name: "Quick Test",
   method: "GET",
@@ -76,12 +85,13 @@ export default function Home() {
   const [authToken, setAuthToken] = useState(() =>
     typeof window === "undefined" ? "" : sessionStorage.getItem("loadtester_auth_token") ?? ""
   );
+  const [apiBase, setApiBase] = useState(() => resolveDefaultApiBase());
   const [config, setConfig] = useState<RequestConfig>(defaultConfig);
   const [headersText, setHeadersText] = useState("");
   const [formBodyText, setFormBodyText] = useState("");
   const [multipartRows, setMultipartRows] = useState<MultipartRow[]>([
     {
-      id: crypto.randomUUID(),
+      id: createClientId(),
       enabled: true,
       kind: "file",
       fieldName: "file",
@@ -112,6 +122,11 @@ export default function Home() {
     } else {
       sessionStorage.removeItem("loadtester_auth_token");
     }
+  }
+
+  function handleApiBaseChange(value: string) {
+    setApiBase(value);
+    saveApiBase(value);
   }
 
   const latencySeries = useMemo(
@@ -174,7 +189,7 @@ export default function Home() {
     setMultipartRows((rows) => [
       ...rows,
       {
-        id: crypto.randomUUID(),
+        id: createClientId(),
         enabled: true,
         kind,
         fieldName: kind === "file" ? "file" : "name",
@@ -286,21 +301,32 @@ export default function Home() {
             Dark, local-first load tester with custom success statuses, proxy rotation, and sleek real-time reporting.
           </p>
           {backendError ? <p className="mt-2 text-sm text-red-400">{backendError}</p> : null}
-          <div className="mt-4 grid gap-2 md:max-w-xl">
-            <label className="text-xs font-medium uppercase tracking-wide text-zinc-500" htmlFor="auth-token">
-              Auth token
-            </label>
-            <Input
-              id="auth-token"
-              type="password"
-              autoComplete="current-password"
-              placeholder="Token from backend AUTH_TOKEN"
-              value={authToken}
-              onChange={(e) => saveAuthToken(e.target.value)}
-            />
-            <p className="text-xs text-zinc-500">
-              Stored in this browser session only and sent as a Bearer token. It is not bundled in frontend env.
-            </p>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            <Field label="API Base URL" htmlFor="api-base">
+              <Input
+                id="api-base"
+                type="url"
+                placeholder="http://server-ip:9090"
+                value={apiBase}
+                onChange={(e) => handleApiBaseChange(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                For remote access this must point to the server, not localhost.
+              </p>
+            </Field>
+            <Field label="Auth token" htmlFor="auth-token">
+              <Input
+                id="auth-token"
+                type="password"
+                autoComplete="current-password"
+                placeholder="Token from backend AUTH_TOKEN"
+                value={authToken}
+                onChange={(e) => saveAuthToken(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Stored in this browser session and sent as a Bearer token.
+              </p>
+            </Field>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {(["builder", "live", "proxies", "reports"] as const).map((item) => (

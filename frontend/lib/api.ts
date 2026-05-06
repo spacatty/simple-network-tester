@@ -1,6 +1,55 @@
 import { ProxyRecord, RequestConfig, RunSummary } from "@/lib/types";
 
-const API = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8080";
+const CONFIGURED_API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+const BACKEND_PORT = process.env.NEXT_PUBLIC_BACKEND_PORT ?? "9090";
+const API_BASE_STORAGE_KEY = "loadtester_api_base";
+
+export function resolveDefaultApiBase() {
+  if (typeof window === "undefined") {
+    return trimTrailingSlash(CONFIGURED_API_BASE || `http://localhost:${BACKEND_PORT}`);
+  }
+
+  const saved = sessionStorage.getItem(API_BASE_STORAGE_KEY);
+  if (saved) {
+    return trimTrailingSlash(saved);
+  }
+
+  if (CONFIGURED_API_BASE) {
+    try {
+      const configured = new URL(CONFIGURED_API_BASE);
+      const currentHost = window.location.hostname;
+      const configuredIsLocal =
+        configured.hostname === "localhost" || configured.hostname === "127.0.0.1";
+      const currentIsLocal = currentHost === "localhost" || currentHost === "127.0.0.1";
+
+      if (configuredIsLocal && !currentIsLocal) {
+        configured.hostname = currentHost;
+      }
+      return trimTrailingSlash(configured.toString());
+    } catch {
+      return trimTrailingSlash(CONFIGURED_API_BASE);
+    }
+  }
+
+  return `${window.location.protocol}//${window.location.hostname}:${BACKEND_PORT}`;
+}
+
+export function saveApiBase(value: string) {
+  const normalized = trimTrailingSlash(value.trim());
+  if (normalized) {
+    sessionStorage.setItem(API_BASE_STORAGE_KEY, normalized);
+  } else {
+    sessionStorage.removeItem(API_BASE_STORAGE_KEY);
+  }
+}
+
+function apiBase() {
+  return resolveDefaultApiBase();
+}
+
+function trimTrailingSlash(value: string) {
+  return value.replace(/\/+$/, "");
+}
 
 function authHeaders(token: string, json = true): HeadersInit {
   return {
@@ -10,7 +59,7 @@ function authHeaders(token: string, json = true): HeadersInit {
 }
 
 async function req<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
+  const res = await fetch(`${apiBase()}${path}`, {
     ...init,
     headers: { ...authHeaders(token), ...(init?.headers ?? {}) },
     cache: "no-store",
@@ -38,7 +87,7 @@ export function streamRun(
   const controller = new AbortController();
   void (async () => {
     try {
-      const res = await fetch(`${API}/api/runs/stream?runId=${encodeURIComponent(runId)}`, {
+      const res = await fetch(`${apiBase()}/api/runs/stream?runId=${encodeURIComponent(runId)}`, {
         headers: authHeaders(token, false),
         signal: controller.signal,
         cache: "no-store",
@@ -78,7 +127,7 @@ export async function uploadFile(
 ): Promise<{ fileId: string; fileName: string }> {
   const fd = new FormData();
   fd.append("file", file);
-  const res = await fetch(`${API}/api/files/upload`, {
+  const res = await fetch(`${apiBase()}/api/files/upload`, {
     method: "POST",
     body: fd,
     headers: authHeaders(token, false),
@@ -117,7 +166,7 @@ export async function listReports(token: string): Promise<RunSummary[]> {
 }
 
 export async function downloadReportCsv(runId: string, token: string) {
-  const res = await fetch(`${API}/api/reports/export?runId=${encodeURIComponent(runId)}`, {
+  const res = await fetch(`${apiBase()}/api/reports/export?runId=${encodeURIComponent(runId)}`, {
     headers: authHeaders(token, false),
   });
   if (!res.ok) {

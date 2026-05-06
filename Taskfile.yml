@@ -37,8 +37,9 @@ tasks:
     dir: frontend
     env:
       NEXT_PUBLIC_API_BASE: "{{.NEXT_PUBLIC_API_BASE}}"
+      NEXT_PUBLIC_BACKEND_PORT: "{{.BACKEND_PORT}}"
     cmds:
-      - npm run dev -- -p {{.FRONTEND_PORT}}
+      - npm run dev -- -H {{.FRONTEND_HOST}} -p {{.FRONTEND_PORT}}
 
   build:
     desc: Build backend and frontend for production
@@ -63,6 +64,7 @@ tasks:
     dir: frontend
     env:
       NEXT_PUBLIC_API_BASE: "{{.NEXT_PUBLIC_API_BASE}}"
+      NEXT_PUBLIC_BACKEND_PORT: "{{.BACKEND_PORT}}"
     cmds:
       - npm run build
 
@@ -91,8 +93,9 @@ tasks:
     dir: frontend
     env:
       NEXT_PUBLIC_API_BASE: "{{.NEXT_PUBLIC_API_BASE}}"
+      NEXT_PUBLIC_BACKEND_PORT: "{{.BACKEND_PORT}}"
     cmds:
-      - npm run start -- -p {{.FRONTEND_PORT}}
+      - npm run start -- -H {{.FRONTEND_HOST}} -p {{.FRONTEND_PORT}}
 
   test:
     desc: Run backend tests and frontend lint/build checks
@@ -111,6 +114,7 @@ tasks:
     dir: frontend
     env:
       NEXT_PUBLIC_API_BASE: "{{.NEXT_PUBLIC_API_BASE}}"
+      NEXT_PUBLIC_BACKEND_PORT: "{{.BACKEND_PORT}}"
     cmds:
       - npm run lint
       - npm run build

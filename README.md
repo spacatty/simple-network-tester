@@ -45,9 +45,12 @@ The recommended way to run the app is with [Task](https://taskfile.dev/). Copy `
 AUTH_TOKEN=use-a-long-random-token
 BACKEND_PORT=9090
 BACKEND_DATA_DIR=./data
+FRONTEND_HOST=0.0.0.0
 FRONTEND_PORT=4000
 NEXT_PUBLIC_API_BASE=http://localhost:9090
 ```
+
+When opening the UI from another machine, use `http://SERVER_IP:4000`. The dashboard auto-rewrites a localhost API base to `http://SERVER_IP:9090`, and you can also edit the API Base URL in the header.
 
 Development mode:
 
