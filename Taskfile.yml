@@ -3,6 +3,13 @@ version: "3"
 dotenv:
   - ".env"
 
+vars:
+  BACKEND_PORT: '{{.BACKEND_PORT | default "9090"}}'
+  BACKEND_DATA_DIR: '{{.BACKEND_DATA_DIR | default "./data"}}'
+  FRONTEND_HOST: '{{.FRONTEND_HOST | default "0.0.0.0"}}'
+  FRONTEND_PORT: '{{.FRONTEND_PORT | default "4000"}}'
+  NEXT_PUBLIC_API_BASE: '{{.NEXT_PUBLIC_API_BASE | default (printf "http://localhost:%s" .BACKEND_PORT)}}'
+
 tasks:
   check-env:
     desc: Validate required environment variables
